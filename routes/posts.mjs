@@ -41,12 +41,18 @@ import express from 'express';
 import { nanoid } from 'nanoid'
 import { client } from './../mongodb.mjs'
 import {ObjectId} from 'mongodb'
+import OpenAI from 'openai';
 
 const db = client.db("cruddb");
 const col = db.collection("posts");
 
 let router = express.Router()
 
+const openaiClient = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+})
+
+// console.log("API Key: ",apiKey);
 // not recommended at all - server should be stateless
 // let posts = [
 //     {
@@ -55,6 +61,56 @@ let router = express.Router()
 //         text: "some post text"
 //     }
 // ]
+
+
+// https://baseurl.com/search?q=car
+router.get('/search', async (req, res, next) => {
+
+    try {
+        const response = await openaiClient.embeddings.create({
+            model: "text-embedding-ada-002",
+            input: req.query.q,
+        });
+        const vector = response?.data[0]?.embedding
+        console.log("vector: ", vector);
+        // [ 0.0023063174, -0.009358601, 0.01578391, ... , 0.01678391, ]
+
+        // Query for similar documents.
+        const documents = await col.aggregate([
+            {
+                "$search": {
+                    "index": "vectorIndex",
+                    "knnBeta": {
+                        "vector": vector,
+                        "path": "embedding",
+                        "k": 10 // number of documents
+                    },
+                    "scoreDetails": true
+
+                }
+            },
+            {
+                "$project": {
+                    "embedding": 0,
+                    "score": { "$meta": "searchScore" },
+                    "scoreDetails": { "$meta": "searchScoreDetails" }
+                }
+            }
+        ]).toArray();
+
+        documents.map(eachMatch => {
+            console.log(`score ${eachMatch?.score?.toFixed(3)} => ${JSON.stringify(eachMatch)}\n\n`);
+        })
+        console.log(`${documents.length} records found `);
+
+        res.send(documents);
+
+    } catch (e) {
+        console.log("error getting data mongodb: ", e);
+        res.status(500).send('server error, please try later');
+    }
+
+})
 
 // POST    /api/v1/post
 router.post('/post', async (req, res, next) => {
@@ -90,6 +146,8 @@ router.post('/post', async (req, res, next) => {
 
 
 
+
+// GET All Posts     /api/v1/posts
 router.get('/posts', async (req, res, next) => {
 
     const cursor = col.find({}).sort({_id:-1});
@@ -100,7 +158,7 @@ router.get('/posts', async (req, res, next) => {
 
 
 
-
+// GET Single Post
 // router.get('/post/:postId', (req, res, next) => {
 //     console.log('this is signup!', new Date());
 
@@ -123,6 +181,8 @@ router.get('/posts', async (req, res, next) => {
 //     text: "updated text"
 // }
 
+
+// PUT Single Post
 router.put('/post/:postId', async (req, res, next) => {
 
     if (!req.params.postId || !req.body.text || !req.body.title) {

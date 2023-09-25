@@ -10,6 +10,7 @@ const Home = () => {
   const [isLoading, setIsLoading] = useState(false);
   const postTitleInputRef = useRef(null);
   const postBodyInputRef = useRef(null);
+  const searchInputRef   = useRef(null);
   const [allPosts, setAllPosts] = useState([])
   const [toggleRefresh, setToggleRefresh] = useState(false)
 
@@ -120,6 +121,22 @@ const Home = () => {
   }
   }
 
+  const searchHandler = async (e) => {
+    e.preventDefault();
+    try {
+      setIsLoading(true);
+      const response = await axios.get(`${baseUrl}/api/v1/search?q=${searchInputRef.current.value}`);
+      console.log(response.data);
+
+      setIsLoading(false);
+      setAllPosts([...response.data]);
+    } catch (error) {
+      console.log(error.data);
+      setIsLoading(false);
+    }
+  };
+
+
   return (
     <div>
       <form onSubmit={submitHandler}>
@@ -159,6 +176,13 @@ const Home = () => {
       </span>
       <br />
       </form>
+      <br />
+
+      <form onSubmit={searchHandler} style={{ textAlign: "right" }}>
+        <input type="search" placeholder="Search..." ref={searchInputRef} />
+        <button type="submit" hidden></button>
+      </form>
+
       <hr />
 
       <div>
