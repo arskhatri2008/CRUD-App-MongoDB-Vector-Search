@@ -125,7 +125,7 @@ const Home = () => {
     e.preventDefault();
     try {
       setIsLoading(true);
-      const response = await axios.get(`${baseUrl}/api/v1/search?q=${searchInputRef.current.value}`);
+      const response = await axios.get(`${baseUrl}/api/v1/mongoDB/search?q=${searchInputRef.current.value}`);
       console.log(response.data);
 
       setIsLoading(false);

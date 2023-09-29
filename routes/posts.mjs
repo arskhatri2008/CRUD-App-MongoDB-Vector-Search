@@ -145,8 +145,6 @@ router.post('/post', async (req, res, next) => {
     }})
 
 
-
-
 // GET All Posts     /api/v1/posts
 router.get('/posts', async (req, res, next) => {
 
